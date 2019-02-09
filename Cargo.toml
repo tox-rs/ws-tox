@@ -1,0 +1,15 @@
+[package]
+name = "ws-tox"
+version = "0.1.0"
+authors = ["Сухарик <suhr@i2pmail.org>"]
+edition = "2018"
+
+[dependencies]
+websocket = "*"
+tokio = "*"
+futures = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+
+[dependencies.rstox]
+git = "https://github.com/tox-rs/rstox.git"
