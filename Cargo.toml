@@ -13,3 +13,6 @@ serde_json = "*"
 
 [dependencies.rstox]
 git = "https://github.com/tox-rs/rstox.git"
+
+[dependencies.ws-tox-protocol]
+git = "https://github.com/suhr/ws-tox-protocol.git"
