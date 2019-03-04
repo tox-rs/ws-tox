@@ -8,9 +8,11 @@ use core::fmt::Debug;
 use futures::{Future, Sink, Stream};
 use tokio::runtime::TaskExecutor;
 
-use crate::protocol::*;
+use ws_tox_protocol as protocol;
 
-mod protocol;
+//use crate::protocol::*;
+
+//mod protocol;
 mod tox;
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, executor: &TaskExecutor)
@@ -90,7 +92,7 @@ fn main() {
                             }
                         })
                         .map_err(|_| ())
-                        .for_each(move |req: Request| {
+                        .for_each(move |req: protocol::Request| {
                             tox_tx.send(req).map_err(|_| ())
                         });
 
