@@ -72,7 +72,7 @@ fn tox_loop(request_rx: std::sync::mpsc::Receiver<Request>, mut answer_tx: Unbou
     let bootstrap_key = BOOTSTRAP_KEY.parse().unwrap();
     tox.bootstrap(BOOTSTRAP_IP, BOOTSTRAP_PORT, bootstrap_key).unwrap();
 
-    dbg!(format!("Server Tox ID: {}", tox.get_address());
+    dbg!(format!("Server Tox ID: {}", tox.get_address()));
 
     loop {
         if let Ok(req) = request_rx.try_recv() {
