@@ -1034,13 +1034,13 @@ dependencies = [
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "websocket 0.22.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "ws-tox-protocol 0.1.0 (git+https://github.com/suhr/ws-tox-protocol.git)",
+ "ws-tox-protocol 0.1.0 (git+https://github.com/tox-rs/ws-tox-protocol.git)",
 ]
 
 [[package]]
 name = "ws-tox-protocol"
 version = "0.1.0"
-source = "git+https://github.com/suhr/ws-tox-protocol.git#69dbe700cc75f18ef339035da977a6603c93c8be"
+source = "git+https://github.com/tox-rs/ws-tox-protocol.git#cdbbb580675ac58a95e47bcfae50a2ceeebdd190"
 dependencies = [
  "rstox 0.0.1 (git+https://github.com/tox-rs/rstox.git)",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1177,5 +1177,5 @@ dependencies = [
 "checksum winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 "checksum winapi-x86_64-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-"checksum ws-tox-protocol 0.1.0 (git+https://github.com/suhr/ws-tox-protocol.git)" = "<none>"
+"checksum ws-tox-protocol 0.1.0 (git+https://github.com/tox-rs/ws-tox-protocol.git)" = "<none>"
 "checksum ws2_32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d59cefebd0c892fa2dd6de581e937301d8552cb44489cdff035c6187cb63fa5e"
