@@ -6,3 +6,11 @@
 [travis-url]: https://travis-ci.org/tox-rs/ws-tox
 
 This server is used to connect JS and tox through WebSocket to create BUI.
+
+## Usage
+
+First you need Rust, libtoxcore and openssl installed. Then you can run ws-tox with
+
+```
+cargo run --release
+```
