@@ -26,13 +26,43 @@ pub enum Answer {
 
 fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response> {
     use Request as R;
+    use ws_tox_protocol::Friend;
 
     match request {
         R::Info => {
-            let name = tox.get_name();
             let tox_id = format!("{}", tox.get_address());
+
+            let name = tox.get_name();
+            let status = tox.get_status().into();
+            let status_message = tox.get_status_message();
+
+            let friends: Vec<_> = tox.get_friend_list()
+                .into_iter()
+                .map(|n| {
+                    let public_key =
+                        format!("{}", tox.get_friend_public_key(n).unwrap());
+                    let name = tox.get_friend_name(n).unwrap();
+                    let status = tox.get_friend_status(n).unwrap().into();
+                    let status_message = tox.get_friend_status_message(n).unwrap();
+                    let last_online = tox.get_friend_last_online(n).unwrap();
+
+                    Friend {
+                        number: n,
+                        public_key,
+                        name,
+                        status,
+                        status_message,
+                        last_online
+                    }
+                })
+                .collect();
+
             let response = Response::Info {
-                name, tox_id
+                tox_id,
+                name,
+                status,
+                status_message,
+                friends
             };
 
             return Some(response)
