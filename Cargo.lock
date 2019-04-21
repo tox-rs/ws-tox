@@ -1040,7 +1040,7 @@ dependencies = [
 [[package]]
 name = "ws-tox-protocol"
 version = "0.1.0"
-source = "git+https://github.com/tox-rs/ws-tox-protocol.git#cdbbb580675ac58a95e47bcfae50a2ceeebdd190"
+source = "git+https://github.com/tox-rs/ws-tox-protocol.git#2d2ff6bb7d9d69a3100d2c4615f011efdb3bc5d2"
 dependencies = [
  "rstox 0.0.1 (git+https://github.com/tox-rs/rstox.git)",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
