@@ -80,7 +80,9 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
         },
         R::SendFriendMessage { friend, kind, message } => {
             let response = tox.send_friend_message(*friend, (*kind).into(), message)
-                .map(|_| Response::Ok)
+                .map(|message_id| Response::MessageSent {
+                    message_id
+                })
                 .unwrap_or_else(|e| Response::SendFriendMessageError {
                     error: e.try_into().expect("unexpected send friend message error")
                 });
