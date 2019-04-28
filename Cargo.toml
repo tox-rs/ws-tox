@@ -5,11 +5,11 @@ authors = ["Сухарик <suhr@i2pmail.org>"]
 edition = "2018"
 
 [dependencies]
-websocket = "*"
-tokio = "*"
-futures = "*"
-serde = { version = "*", features = ["derive"] }
-serde_json = "*"
+websocket = "0.22"
+tokio = "0.1"
+futures = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [dependencies.rstox]
 git = "https://github.com/tox-rs/rstox.git"
