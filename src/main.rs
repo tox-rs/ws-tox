@@ -7,6 +7,7 @@ use core::fmt::Debug;
 
 use futures::{Future, Sink, Stream};
 use tokio::runtime::TaskExecutor;
+use tokio::reactor::Handle as ReactorHandle;
 
 use ws_tox_protocol as protocol;
 
@@ -31,12 +32,11 @@ fn main() {
     use tokio::sync::mpsc::{unbounded_channel};
 
     let mut runtime = tokio::runtime::Builder::new().build().unwrap();
-    let reactor = runtime.reactor().clone();
     let executor = runtime.executor();
 
     let ToxHandle { request_tx, answer_rx } = spawn_tox();
 
-    let server = websocket::r#async::Server::bind("127.0.0.1:2794", &reactor).unwrap();
+    let server = websocket::r#async::Server::bind("127.0.0.1:2794", &ReactorHandle::default()).unwrap();
     let tox_tx = Arc::new(Mutex::new(request_tx));
 
     let connection_sink = Arc::new(Mutex::new(None));
