@@ -80,8 +80,9 @@ fn main() {
                     let (tx, rx) = unbounded_channel();
 
                     *connection_sink.lock().unwrap() = Some(tx);
-                    let to_tox =
-                        stream.filter_map(|m| {
+                    let to_tox = stream
+                        .take_while(|m| Ok(!m.is_close()))
+                        .filter_map(|m| {
                             use websocket::OwnedMessage;
 
                             match m {
