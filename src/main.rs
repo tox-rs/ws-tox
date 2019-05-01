@@ -5,7 +5,7 @@ use crate::tox::spawn_tox;
 use websocket::server::InvalidConnection;
 use core::fmt::Debug;
 
-use futures::{Future, Sink, Stream};
+use futures::{future, Future, Sink, Stream};
 use tokio::runtime::TaskExecutor;
 use tokio::reactor::Handle as ReactorHandle;
 
@@ -56,8 +56,18 @@ fn main() {
 
     let f = server
         .incoming()
-        // we don't wanna save the stream if it drops
-        .map_err(|InvalidConnection { error, .. }| error)
+        .then(future::ok) // wrap good and bad events into future::ok
+        .filter(|event| {
+            match event {
+                Ok(_) => true, // a good connection
+                Err(InvalidConnection { ref error, .. }) => {
+                    println!("Bad client: {}", error);
+                    false // we want to save the stream if a client cannot make a valid handshake
+                }
+            }
+        })
+        .and_then(|event| event) // unwrap good connections
+        .map_err(|_| ()) // and silently ignore errors (in `.filter`)
         .for_each(move |(upgrade, addr)| {
             let connection_sink = connection_sink.clone();
             let connection_sink2 = connection_sink.clone();
