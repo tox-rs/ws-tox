@@ -89,6 +89,132 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
 
             return Some(response)
         },
+        R::NewConference => {
+            let response = tox.new_conference()
+                .map(|conference| Response::Conference {
+                    conference
+                })
+                .expect("unexpected new conference error");
+
+            return Some(response)
+        },
+        R::DeleteConference { conference } => {
+            let response = tox.delete_conference(*conference)
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|| unimplemented!());
+
+            return Some(response)
+        }
+        R::ConferencePeerCount { conference } => {
+            let response = tox.conference_peer_count(*conference)
+                .map(|count| Response::ConferencePeerCount {
+                    count
+                })
+                .unwrap_or_else(|e| Response::ConferencePeerQueryError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::GetPeerName { conference, peer } => {
+            let response = tox.get_peer_name(*conference, *peer)
+                .map(|name| Response::ConferencePeerName {
+                    name
+                })
+                .unwrap_or_else(|e| Response::ConferencePeerQueryError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::GetPeerPublicKey { conference, peer } => {
+            let response = tox.get_peer_public_key(*conference, *peer)
+                .map(|pk| Response::ConferencePeerPublicKey {
+                    public_key: format!("{}", pk)
+                })
+                .unwrap_or_else(|e| Response::ConferencePeerQueryError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::IsOwnPeerNumber { conference, peer_number } => {
+            let response = tox.is_own_peer_number(*conference, *peer_number)
+                .map(|is_own| Response::IsOwnPeerNumber {
+                    is_own
+                })
+                .unwrap_or_else(|e| Response::ConferencePeerQueryError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::InviteToConference { friend, conference } => {
+            let response = tox.invite_to_conference(*friend, *conference)
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|e| Response::ConferenceInviteError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::JoinConference { friend, cookie } => {
+            let cookie = rstox::core::Cookie::from_bytes(cookie);
+            let response = tox.join_conference(*friend, &cookie)
+                .map(|conference| Response::Conference {
+                    conference
+                })
+                .unwrap_or_else(|e| Response::ConferenceJoinError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::SendConferenceMessage { conference, kind, message } => {
+            let response = tox.send_conference_message(*conference, (*kind).into(), message)
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|e| Response::ConferenceSendError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::GetConferenceTitle { conference } => {
+            let response = tox.get_conference_title(*conference)
+                .map(|title| Response::ConferenceTitle {
+                    title
+                })
+                .unwrap_or_else(|e| Response::ConferenceTitleError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::SetConferenceTitle { conference, title } => {
+            let response = tox.set_conference_title(*conference, title)
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|e| Response::ConferenceTitleError {
+                    error: e.try_into().unwrap()
+                });
+
+            return Some(response)
+        },
+        R::GetChatList => {
+            let response = Response::ChatList {
+                list: tox.get_chatlist()
+            };
+
+            return Some(response)
+        },
+        R::GetConferenceType { conference } => {
+            let response = tox.get_conference_type(*conference)
+                .map(|kind| Response::ConferenceType {
+                    kind: kind.into()
+                })
+                .unwrap_or_else(|| unimplemented!());
+
+            return Some(response)
+        },
         _ => drop(dbg!(request)),
     }
 
