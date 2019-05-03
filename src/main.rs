@@ -11,6 +11,8 @@ use tokio::reactor::Handle as ReactorHandle;
 
 use ws_tox_protocol as protocol;
 
+use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+
 //use crate::protocol::*;
 
 //mod protocol;
@@ -43,12 +45,13 @@ fn main() {
     let connection_sink2 = connection_sink.clone();
 
     let p = answer_rx
-        .map_err(|_| ())
+        .map_err(|_| IoError::new(IoErrorKind::Other, "answer_rx dropped"))
         .for_each(move |r| {
             if let Some(ref mut sink) = *connection_sink2.lock().unwrap() {
                 let sink : &mut tokio::sync::mpsc::UnboundedSender<websocket::OwnedMessage> = sink;
                 let answer = serde_json::to_string(&r).unwrap();
-                sink.try_send(websocket::OwnedMessage::Text(answer)).map_err(|_| ())?;
+                sink.try_send(websocket::OwnedMessage::Text(answer))
+                    .map_err(|_|  IoError::new(IoErrorKind::Other, "connection_sink dropped"))?;
             }
 
             Ok(())
@@ -67,7 +70,7 @@ fn main() {
             }
         })
         .and_then(|event| event) // unwrap good connections
-        .map_err(|_| ()) // and silently ignore errors (in `.filter`)
+        .map_err(|_| IoError::new(IoErrorKind::Other, "invalid connection"))
         .for_each(move |(upgrade, addr)| {
             let connection_sink = connection_sink.clone();
             let connection_sink2 = connection_sink.clone();
@@ -82,7 +85,9 @@ fn main() {
             // accept the request to be a ws connection if it does
             let f = upgrade
                 .accept()
-                .map_err(|_| ())
+                .map_err(|e| IoError::new(IoErrorKind::Other,
+                    format!("websocket accept err: {}", e)
+                ))
                 .and_then(move |(s, _h)| {
                     let (sink, stream) = s.split();
                     let tox_tx = (*tox_tx.lock().unwrap()).clone();
@@ -102,20 +107,24 @@ fn main() {
                                 _ => None,
                             }
                         })
-                        .map_err(|_| ())
+                        .map_err(|e| IoError::new(IoErrorKind::Other,
+                            format!("websocket read err: {}", e)
+                        ))
                         .for_each(move |req: protocol::Request| {
-                            tox_tx.send(req).map_err(|_| ())
+                            tox_tx.send(req)
+                                .map_err(|_| IoError::new(IoErrorKind::Other, "tox_tx dropped"))
                         });
 
                     let from_tox = rx
-                        .map_err(|_| ())
-                        .forward(sink.sink_map_err(|_| ()))
-                        .map_err(|_| ())
+                        .map_err(|_| IoError::new(IoErrorKind::Other, "from_tox rx dropped"))
+                        .forward(sink.sink_map_err(|e| IoError::new(IoErrorKind::Other,
+                            format!("websocket write err: {}", e)
+                        )))
                         .map(|_| ());
 
                     to_tox.select(from_tox)
                         .map(|_| ())
-                        .map_err(|_| ())
+                        .map_err(|(e, _)| e)
                 })
                 .and_then(move |_| {
                     *connection_sink2.lock().unwrap() = None;
@@ -125,9 +134,9 @@ fn main() {
 
             spawn_future(f, "Client Status", &executor);
             Ok(())
-        }).map_err(|_| ());
+        });
 
-    let k = f.select(p).map_err(|_| ());
+    let k = f.select(p).map_err(|(e, _)| e);
 
     runtime.block_on(k).unwrap();
 }
