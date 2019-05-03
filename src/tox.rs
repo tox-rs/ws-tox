@@ -78,6 +78,143 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
 
             return Some(response)
         },
+        R::GetConnectionStatus => {
+            let response = Response::ConnectionStatus {
+                status: tox.get_connection_status().into()
+            };
+
+            return Some(response)
+        },
+        R::GetAddress => {
+            let response = Response::Address {
+                address: format!("{}", tox.get_address())
+            };
+
+            return Some(response)
+        },
+        R::GetNospam => {
+            unimplemented!()
+        },
+        R::SetNospam { nospam } => {
+            unimplemented!()
+        },
+        R::GetPublicKey => {
+            let response = Response::PublicKey {
+                public_key: format!("{}", tox.get_public_key())
+            };
+
+            return Some(response)
+        },
+        R::SetName { name } => {
+            drop(tox.set_name(name))
+        },
+        R::GetName => {
+            let response = Response::Name {
+                name: tox.get_name()
+            };
+
+            return Some(response)
+        },
+        R::SetStatusMessage { message } => {
+            drop(tox.set_status_message(message))
+        },
+        R::GetStatusMessage => {
+            let response = Response::StatusMessage {
+                status: tox.get_status_message()
+            };
+
+            return Some(response)
+        },
+        R::SetStatus { status } => {
+            use rstox::core::UserStatus as S;
+
+            // TODO: Add `From` implementation into ws-tox-protocol
+            let status = match status {
+                UserStatus::None => S::None,
+                UserStatus::Away => S::Away,
+                UserStatus::Busy => S::Busy
+            };
+
+            tox.set_status(status)
+        },
+        R::GetStatus => {
+            let response = Response::Status {
+                status: tox.get_status().into()
+            };
+
+            return Some(response)
+        },
+        R::FriendByPublicKey { public_key } => {
+            let response = public_key.parse().ok()
+                .and_then(|pk| tox.friend_by_public_key(pk))
+                .map(|friend| Response::Friend {
+                    friend
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
+        R::FriendExists { friend } => {
+            let response = Response::FriendExists {
+                exists: tox.friend_exists(*friend)
+            };
+
+            return Some(response)
+        },
+        R::GetFriendPublicKey { friend } => {
+            let response = tox.get_friend_public_key(*friend)
+                .map(|pk| Response::PublicKey {
+                    public_key: format!("{}", pk)
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
+        R::GetFriendLastOnline { friend } => {
+            let response = tox.get_friend_last_online(*friend)
+                .map(|last_online| Response::LastOnline {
+                    last_online
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
+        R::GetFriendName { friend } => {
+            let response = tox.get_friend_name(*friend)
+                .map(|name| Response::Name {
+                    name
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
+        R::GetFriendStatusMessage { friend } => {
+            let response = tox.get_friend_status_message(*friend)
+                .map(|status| Response::StatusMessage {
+                    status
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
+        R::GetFriendStatus { friend } => {
+            let response = tox.get_friend_status(*friend)
+                .map(|status| Response::Status {
+                    status: status.into()
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
+        R::GetFriendConnectionStatus { friend } => {
+            let response = tox.get_friend_connection_status(*friend)
+                .map(|status| Response::ConnectionStatus {
+                    status: status.into()
+                })
+                .unwrap_or_else(|| Response::FriendNotFoundError);
+
+            return Some(response)
+        },
         R::SendFriendMessage { friend, kind, message } => {
             let response = tox.send_friend_message(*friend, (*kind).into(), message)
                 .map(|message_id| Response::MessageSent {
