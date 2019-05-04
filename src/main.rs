@@ -1,4 +1,6 @@
 extern crate websocket;
+extern crate native_tls;
+extern crate structopt;
 
 use crate::tox::ToxHandle;
 use crate::tox::spawn_tox;
@@ -11,7 +13,18 @@ use tokio::reactor::Handle as ReactorHandle;
 
 use ws_tox_protocol as protocol;
 
-use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+use std::io::{Read, Error as IoError, ErrorKind as IoErrorKind};
+use std::path::PathBuf;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "ws-tox")]
+struct Opt {
+    #[structopt(long = "pfx_path", parse(from_os_str))]
+    pfx_path: PathBuf,
+    #[structopt(long = "pfx_pass")]
+    pfx_pass: String,
+}
 
 //use crate::protocol::*;
 
@@ -30,6 +43,16 @@ where
 }
 
 fn main() {
+    let opt = Opt::from_args();
+    let mut file = std::fs::File::open(opt.pfx_path).expect("Could not find pfx file");
+    let mut pkcs12 = vec![];
+    file.read_to_end(&mut pkcs12).expect("Could not read pfx file");
+    let pkcs12 = native_tls::Identity::from_pkcs12(&pkcs12, &opt.pfx_pass)
+        .expect("Could not create pkcs12");
+
+    let acceptor = native_tls::TlsAcceptor::builder(pkcs12).build()
+        .expect("Could not create TlsAcceptor");
+
     use std::sync::{Arc, Mutex};
     use tokio::sync::mpsc::{unbounded_channel};
 
@@ -38,7 +61,7 @@ fn main() {
 
     let ToxHandle { request_tx, answer_rx } = spawn_tox();
 
-    let server = websocket::r#async::Server::bind("127.0.0.1:2794", &ReactorHandle::default()).unwrap();
+    let server = websocket::r#async::Server::bind_secure("127.0.0.1:2794", acceptor, &ReactorHandle::default()).unwrap();
     let tox_tx = Arc::new(Mutex::new(request_tx));
 
     let connection_sink = Arc::new(Mutex::new(None));
