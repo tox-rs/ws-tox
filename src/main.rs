@@ -149,10 +149,10 @@ fn main() {
                         .map(|_| ())
                         .map_err(|(e, _)| e)
                 })
-                .and_then(move |_| {
+                .then(move |r| {
                     *connection_sink2.lock().unwrap() = None;
 
-                    Ok(())
+                    r
                 });
 
             spawn_future(f, "Client Status", &executor);
