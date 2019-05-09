@@ -8,7 +8,6 @@ use websocket::server::InvalidConnection;
 use core::fmt::Debug;
 
 use futures::{future, Future, Sink, Stream};
-use tokio::runtime::TaskExecutor;
 use tokio::reactor::Handle as ReactorHandle;
 
 use ws_tox_protocol as protocol;
@@ -31,12 +30,12 @@ struct Opt {
 //mod protocol;
 mod tox;
 
-fn spawn_future<F, I, E>(f: F, desc: &'static str, executor: &TaskExecutor)
+fn spawn_future<F, I, E>(f: F, desc: &'static str)
 where
     F: Future<Item = I, Error = E> + 'static + Send,
     E: Debug,
 {
-    executor.spawn(
+    tokio::spawn(
         f.map_err(move |e| println!("{}: '{:?}'", desc, e))
             .map(move |_| println!("{}: Finished.", desc)),
     );
@@ -55,9 +54,6 @@ fn main() {
 
     use std::sync::{Arc, Mutex};
     use tokio::sync::mpsc::{unbounded_channel};
-
-    let mut runtime = tokio::runtime::Builder::new().build().unwrap();
-    let executor = runtime.executor();
 
     let ToxHandle { request_tx, answer_rx } = spawn_tox();
 
@@ -101,7 +97,7 @@ fn main() {
 
             println!("Got a connection from: {}", addr);
             if connection_sink.lock().unwrap().is_some() {
-                spawn_future(upgrade.reject(), "Reject the second connection", &executor);
+                spawn_future(upgrade.reject(), "Reject the second connection");
                 return Ok(());
             }
 
@@ -155,11 +151,12 @@ fn main() {
                     r
                 });
 
-            spawn_future(f, "Client Status", &executor);
+            spawn_future(f, "Client Status");
             Ok(())
         });
 
     let k = f.select(p).map_err(|(e, _)| e);
 
+    let mut runtime = tokio::runtime::Builder::new().build().unwrap();
     runtime.block_on(k).unwrap();
 }
