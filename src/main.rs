@@ -4,25 +4,33 @@ extern crate structopt;
 
 use crate::tox::ToxHandle;
 use crate::tox::spawn_tox;
-use websocket::server::InvalidConnection;
+use websocket::server::{InvalidConnection, OptionalTlsAcceptor, NoTlsAcceptor};
+use websocket::server::r#async::{Incoming};
+use websocket::r#async::{Server, TcpStream as wsTcpStream, Stream as wsStream};
 use core::fmt::Debug;
 
 use futures::{future, Future, Sink, Stream};
 use tokio::reactor::Handle as ReactorHandle;
+use tokio::sync::mpsc::{unbounded_channel};
+use tokio_tls::TlsStream;
 
 use ws_tox_protocol as protocol;
 
-use std::io::{Read, Error as IoError, ErrorKind as IoErrorKind};
+use std::io::{Read, Write, Error as IoError, ErrorKind as IoErrorKind};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "ws-tox")]
 struct Opt {
-    #[structopt(long = "pfx_path", parse(from_os_str))]
-    pfx_path: PathBuf,
-    #[structopt(long = "pfx_pass")]
-    pfx_pass: String,
+    #[structopt(long = "pfx_path", parse(from_os_str), raw(required_unless = r#""insecure""#))]
+    pfx_path: Option<PathBuf>,
+    #[structopt(long = "pfx_pass", raw(required_unless = r#""insecure""#))]
+    pfx_pass: Option<String>,
+    #[structopt(long = "insecure")]
+    insecure: bool,
 }
 
 //use crate::protocol::*;
@@ -41,23 +49,34 @@ where
     );
 }
 
-fn main() {
-    let opt = Opt::from_args();
-    let mut file = std::fs::File::open(opt.pfx_path).expect("Could not find pfx file");
-    let mut pkcs12 = vec![];
-    file.read_to_end(&mut pkcs12).expect("Could not read pfx file");
-    let pkcs12 = native_tls::Identity::from_pkcs12(&pkcs12, &opt.pfx_pass)
-        .expect("Could not create pkcs12");
+struct OptionalTlsServer<S: OptionalTlsAcceptor>
+{
+    pub server: Server<S>,
+}
 
-    let acceptor = native_tls::TlsAcceptor::builder(pkcs12).build()
-        .expect("Could not create TlsAcceptor");
+trait OptionalTlsServerTrait {
+    type IncomingStream: Read + Write + wsStream + Send + 'static;
+    fn incoming(self) -> Incoming<Self::IncomingStream>;
+}
 
-    use std::sync::{Arc, Mutex};
-    use tokio::sync::mpsc::{unbounded_channel};
+impl OptionalTlsServerTrait for OptionalTlsServer<native_tls::TlsAcceptor> {
+    type IncomingStream = TlsStream<wsTcpStream>;
+    fn incoming(self) -> Incoming<Self::IncomingStream> {
+        self.server.incoming()
+    }
+}
 
+impl OptionalTlsServerTrait for OptionalTlsServer<NoTlsAcceptor> {
+    type IncomingStream = wsTcpStream;
+    fn incoming(self) -> Incoming<Self::IncomingStream> {
+        self.server.incoming()
+    }
+}
+
+fn run_server(server: impl OptionalTlsServerTrait)
+{
     let ToxHandle { request_tx, answer_rx } = spawn_tox();
 
-    let server = websocket::r#async::Server::bind_secure("127.0.0.1:2794", acceptor, &ReactorHandle::default()).unwrap();
     let tox_tx = Arc::new(Mutex::new(request_tx));
 
     let connection_sink = Arc::new(Mutex::new(None));
@@ -159,4 +178,25 @@ fn main() {
 
     let mut runtime = tokio::runtime::Builder::new().build().unwrap();
     runtime.block_on(k).unwrap();
+}
+
+fn main() {
+    let opt = Opt::from_args();
+
+    if opt.insecure {
+        let server = Server::bind("127.0.0.1:2794", &ReactorHandle::default()).unwrap();
+        run_server(OptionalTlsServer{ server });
+    } else {
+        let mut file = std::fs::File::open(opt.pfx_path.unwrap()).expect("Could not find pfx file");
+        let mut pkcs12 = vec![];
+        file.read_to_end(&mut pkcs12).expect("Could not read pfx file");
+        let pkcs12 = native_tls::Identity::from_pkcs12(&pkcs12, &opt.pfx_pass.unwrap())
+            .expect("Could not create pkcs12");
+
+        let acceptor = native_tls::TlsAcceptor::builder(pkcs12).build()
+            .expect("Could not create TlsAcceptor");
+
+        let server = Server::bind_secure("127.0.0.1:2794", acceptor, &ReactorHandle::default()).unwrap();
+        run_server(OptionalTlsServer{ server });
+    }
 }
