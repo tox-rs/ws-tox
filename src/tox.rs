@@ -226,6 +226,45 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
 
             return Some(response)
         },
+        R::ControlFile { friend, file_number, control } => {
+            let response = tox.control_file(*friend, *file_number, (*control).into())
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|e| Response::FileControlError {
+                    error: e.try_into().expect("unexpected file control error")
+                });
+
+            return Some(response)
+        },
+        R::SeekFile { friend, file_number, position } => {
+            let response = tox.seek_file(*friend, *file_number, *position)
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|e| Response::FileSeekError {
+                    error: e.try_into().expect("unexpected file seek error")
+                });
+
+            return Some(response)
+        },
+        R::GetFileId { friend, file_number } => {
+            unimplemented!()
+        },
+        R::SendFile { friend, kind, file_size, file_name } => {
+            let response = tox.send_file(*friend, (*kind).into(), *file_size, file_name)
+                .map(|file_number| Response::FileNumber { file_number })
+                .unwrap_or_else(|e| Response::FileSendError {
+                    error: e.try_into().expect("unexpected file send error")
+                });
+
+            return Some(response)
+        },
+        R::SendFileChunk { friend, file_number, position, data } => {
+            let response = tox.send_file_chunk(*friend, *file_number, *position, data)
+                .map(|_| Response::Ok)
+                .unwrap_or_else(|e| Response::FileSendChunkError {
+                    error: e.try_into().expect("unexprected file chunk send error")
+                });
+        
+            return Some(response)
+        },
         R::NewConference => {
             let response = tox.new_conference()
                 .map(|conference| Response::Conference {
