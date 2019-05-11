@@ -9,14 +9,8 @@ This server is used to connect JS and tox through WebSocket to create BUI.
 
 ## Usage
 
-First you need Rust, libtoxcore and openssl installed. Then you can run ws-tox with
+First you need Rust and libtoxcore installed. Then you can run ws-tox with
 
 ```
-# WS
-cargo run --release -- --insecure
-```
-
-```
-# WSS
-cargo run --release -- --pfx_pass $PASSWD --pfx_path $PATH_TO_PFX
+cargo run --release
 ```
