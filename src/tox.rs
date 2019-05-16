@@ -24,6 +24,61 @@ pub enum Answer {
     Event(Event),
 }
 
+fn get_peer_info(
+    tox: &mut rstox::core::Tox,
+    conference: u32,
+    peer: u32
+) -> Result<PeerInfo, ConferencePeerQueryError> {
+    let pk = tox.get_peer_public_key(conference, peer)
+        .map_err(|e| e.try_into().unwrap())?;
+    let name = tox.get_peer_name(conference, peer)
+        .map_err(|e| e.try_into().unwrap())?;
+    let info = PeerInfo {
+        number: peer,
+        public_key: format!("{}", pk),
+        name
+    };
+
+    Ok(info)
+}
+
+fn get_peer_list(
+    tox: &mut rstox::core::Tox,
+    conference: u32
+) -> Result<Vec<PeerInfo>, ConferencePeerQueryError> {
+    let count = tox.conference_peer_count(conference)
+        .map_err(|e| e.try_into().unwrap())?;
+
+    let mut list = Vec::with_capacity(count as usize);
+    for peer in 0..count {
+        list.push(get_peer_info(tox, conference, peer)?);
+    }
+
+    Ok(list)
+}
+
+fn get_conference_info(
+    tox: &mut rstox::core::Tox,
+    conference: u32
+) -> Option<ConferenceInfo> {
+    use rstox::core::errors::ConferenceTitleError as TitleError;
+
+    let kind = tox.get_conference_type(conference)?;
+    let title = match tox.get_conference_title(conference) {
+        Ok(title) => title,
+        Err(TitleError::InvalidLength) => "".to_owned(),
+        _ => return None
+    };
+    let peers = get_peer_list(tox, conference).ok()?;
+
+    Some(ConferenceInfo {
+        number: conference,
+        kind: kind.into(),
+        title,
+        peers
+    })
+}
+
 fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response> {
     use Request as R;
     use ws_tox_protocol::Friend;
@@ -75,6 +130,24 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
                 .unwrap_or_else(|e| Response::AddFriendError {
                     error: e.try_into().expect("unexpected friend add error")
                 });
+
+            return Some(response)
+        },
+        R::AddFriendNorequest { tox_id } => {
+            let address: rstox::core::PublicKey = tox_id.parse().ok()?;
+
+            let response = tox.add_friend_norequest(&address)
+                .map(|()| Response::Ok)
+                .unwrap_or_else(|e| Response::AddFriendError {
+                    error: e.try_into().expect("unexpected friend add error")
+                });
+
+            return Some(response)
+        },
+        R::DeleteFriend { friend } => {
+            let response = tox.delete_friend(*friend)
+                .map(|()| Response::Ok)
+                .unwrap_or_else(|_| Response::FriendNotFoundError);
 
             return Some(response)
         },
@@ -262,7 +335,7 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
                 .unwrap_or_else(|e| Response::FileSendChunkError {
                     error: e.try_into().expect("unexprected file chunk send error")
                 });
-        
+
             return Some(response)
         },
         R::NewConference => {
@@ -281,6 +354,13 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
 
             return Some(response)
         }
+        R::GetPeerList { conference } => {
+            let response = get_peer_list(tox, *conference)
+                .map(|peers| Response::ConferencePeerList { peers })
+                .unwrap_or_else(|error| Response::ConferencePeerQueryError { error });
+
+            return Some(response)
+        },
         R::ConferencePeerCount { conference } => {
             let response = tox.conference_peer_count(*conference)
                 .map(|count| Response::ConferencePeerCount {
@@ -375,10 +455,17 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
 
             return Some(response)
         },
-        R::GetChatList => {
-            let response = Response::ChatList {
-                list: tox.get_chatlist()
-            };
+        R::GetConferenceList => {
+            let chat_list = tox.get_chatlist();
+
+            let mut conferences = Vec::with_capacity(chat_list.len());
+            for c in chat_list {
+                if let Some(info) = get_conference_info(tox, c) {
+                    conferences.push(info)
+                }
+            }
+
+            let response = Response::ConferenceList { conferences };
 
             return Some(response)
         },
