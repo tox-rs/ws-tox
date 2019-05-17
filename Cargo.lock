@@ -472,7 +472,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rstox"
 version = "0.0.1"
-source = "git+https://github.com/tox-rs/rstox.git#1c2e0a18afe4f5dfbd0ada4a6fcc98e3fec9a7ef"
+source = "git+https://github.com/tox-rs/rstox.git#e95b4edee9f86af86484b363388cd87ddda4be67"
 dependencies = [
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
