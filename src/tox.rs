@@ -1,6 +1,7 @@
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender, UnboundedReceiver};
 use serde::{Serialize, Deserialize};
 
+use std::sync::{Arc, atomic};
 use std::convert::TryInto;
 
 use crate::protocol::*;
@@ -12,9 +13,37 @@ const BOOTSTRAP_KEY: &'static str =
 
 const CLIENT_NAME: &'static str = "ws-client";
 
+#[derive(Clone)]
+pub struct ToxGuard {
+    is_dropped: Arc<atomic::AtomicBool>
+}
+
+impl ToxGuard {
+    fn new() -> Self {
+        let is_dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        ToxGuard { is_dropped }
+    }
+
+    fn is_dropped(&self) -> bool {
+        use std::sync::atomic::Ordering;
+
+        self.is_dropped.load(Ordering::SeqCst)
+    }
+}
+
+impl Drop for ToxGuard {
+    fn drop(&mut self) {
+        use std::sync::atomic::Ordering;
+
+        self.is_dropped.store(true, Ordering::SeqCst)
+    }
+}
+
 pub struct ToxHandle {
     pub request_tx: std::sync::mpsc::Sender<Request>,
     pub answer_rx: UnboundedReceiver<Answer>,
+    pub guard: ToxGuard,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -484,10 +513,21 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
     None
 }
 
-fn tox_loop(request_rx: std::sync::mpsc::Receiver<Request>, mut answer_tx: UnboundedSender<Answer>) {
+fn tox_loop(
+    secret_key: Option<rstox::core::SecretKey>,
+    request_rx: std::sync::mpsc::Receiver<Request>,
+    mut answer_tx: UnboundedSender<Answer>,
+    guard: ToxGuard,
+) {
     use rstox::core::{Tox, ToxOptions};
 
-    let mut tox = Tox::new(ToxOptions::new(), None).unwrap();
+    let mut tox_options = ToxOptions::new();
+
+    if let Some(sk) = secret_key {
+        tox_options = tox_options.set_secret_key(sk)
+    }
+
+    let mut tox = Tox::new(tox_options, None).unwrap();
 
     tox.set_name(CLIENT_NAME).unwrap();
     let bootstrap_key = BOOTSTRAP_KEY.parse().unwrap();
@@ -496,6 +536,8 @@ fn tox_loop(request_rx: std::sync::mpsc::Receiver<Request>, mut answer_tx: Unbou
     dbg!(format!("Server Tox ID: {}", tox.get_address()));
 
     loop {
+        if guard.is_dropped() { return }
+
         if let Ok(req) = request_rx.try_recv() {
             if let Some(resp) = run_request(&mut tox, &req) {
                 drop(answer_tx.try_send(Answer::Response(resp)))
@@ -515,15 +557,17 @@ fn tox_loop(request_rx: std::sync::mpsc::Receiver<Request>, mut answer_tx: Unbou
     }
 }
 
-pub fn spawn_tox() -> ToxHandle {
+pub fn spawn_tox(secret_key: Option<rstox::core::SecretKey>) -> ToxHandle {
     use std::sync::mpsc;
 
     let (request_tx, request_rx) = mpsc::channel();
     let (answer_tx, answer_rx) = unbounded_channel();
+    let guard = ToxGuard::new();
+    let handle = guard.clone();
 
-    std::thread::spawn(move || tox_loop(request_rx, answer_tx));
+    std::thread::spawn(move || tox_loop(secret_key, request_rx, answer_tx, handle));
 
     ToxHandle {
-        request_tx, answer_rx
+        request_tx, answer_rx, guard
     }
 }
