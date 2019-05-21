@@ -529,6 +529,15 @@ fn tox_loop(
 
     let mut tox = Tox::new(tox_options, None).unwrap();
 
+    {
+        let sk = tox.get_secret_key();
+        let ev = Event::SecretKey {
+            secret_key: format!("{}", sk)
+        };
+
+        drop(answer_tx.try_send(Answer::Event(ev)))
+    }
+
     tox.set_name(CLIENT_NAME).unwrap();
     let bootstrap_key = BOOTSTRAP_KEY.parse().unwrap();
     tox.bootstrap(BOOTSTRAP_IP, BOOTSTRAP_PORT, bootstrap_key).unwrap();
