@@ -45,9 +45,12 @@ fn main() {
         .for_each(move |(upgrade, addr)| {
             eprintln!("Got a connection from: {}", addr);
 
-            let secret_key = upgrade.uri()
-                .get(1..)
-                .and_then(|sk| sk.parse().ok());
+            let uri = upgrade.uri();
+            let secret_key =
+                if uri.get(0..4) == Some("/ws/") {
+                    uri.get(4..).and_then(|sk| sk.parse().ok())
+                }
+                else { None };
 
             let ToxHandle { request_tx, answer_rx, guard } = spawn_tox(secret_key);
 
