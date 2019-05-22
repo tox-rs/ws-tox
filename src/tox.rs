@@ -151,6 +151,33 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
 
             return Some(response)
         },
+        R::SetInfo {
+            nospam,
+            name,
+            status,
+            status_message,
+            ref friends
+        } => {
+            let status = match status {
+                UserStatus::None => rstox::core::UserStatus::None,
+                UserStatus::Away => rstox::core::UserStatus::Away,
+                UserStatus::Busy => rstox::core::UserStatus::Busy,
+            };
+
+            if let Ok(nospam) = nospam.parse() {
+                tox.set_nospam(nospam)
+            }
+
+            drop(tox.set_name(name));
+            tox.set_status(status);
+            drop(tox.set_status_message(status_message));
+
+            for f in friends {
+                if let Ok(pk) = f.parse() {
+                    drop(tox.add_friend_norequest(&pk))
+                }
+            }
+        },
         R::AddFriend { tox_id, message } => {
             let address: rstox::core::Address = tox_id.parse().ok()?;
 
