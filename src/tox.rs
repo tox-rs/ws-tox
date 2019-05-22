@@ -195,10 +195,16 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
             return Some(response)
         },
         R::GetNospam => {
-            unimplemented!()
+            let response = Response::Nospam {
+                nospam: format!("{}", tox.get_nospam())
+            };
+
+            return Some(response)
         },
         R::SetNospam { nospam } => {
-            unimplemented!()
+            if let Ok(nospam) = nospam.parse() {
+                tox.set_nospam(nospam)
+            }
         },
         R::GetPublicKey => {
             let response = Response::PublicKey {
