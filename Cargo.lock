@@ -472,7 +472,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rstox"
 version = "0.0.1"
-source = "git+https://github.com/tox-rs/rstox.git#3fd7154b54fbb17c3306f0c5401dfb86f1f29ac1"
+source = "git+https://github.com/tox-rs/rstox.git#1793619cd4d59c04a512912e95970598daea0ab4"
 dependencies = [
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -835,7 +835,7 @@ dependencies = [
 [[package]]
 name = "ws-tox-protocol"
 version = "0.1.0"
-source = "git+https://github.com/tox-rs/ws-tox-protocol.git#ae44e2dfddd82e4268a7c56d07d63c89b11d7fc2"
+source = "git+https://github.com/tox-rs/ws-tox-protocol.git#402ee277091a66a9fa50a0dc604aa3d087dbc2ea"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64-serde 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -380,7 +380,16 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
             return Some(response)
         },
         R::GetFileId { friend, file_number } => {
-            unimplemented!()
+            let response = tox.get_file_id(*friend, *file_number)
+                .map(|id| Response::FileId {
+                    id: format!("{}", id)
+                }).unwrap_or_else(|e|
+                    Response::FileGetError {
+                        error: e.try_into().unwrap()
+                    }
+                );
+
+            return Some(response)
         },
         R::SendFile { friend, kind, file_size, file_name } => {
             let response = tox.send_file(*friend, (*kind).into(), *file_size, file_name)
@@ -396,6 +405,25 @@ fn run_request(tox: &mut rstox::core::Tox, request: &Request) -> Option<Response
                 .map(|_| Response::Ok)
                 .unwrap_or_else(|e| Response::FileSendChunkError {
                     error: e.try_into().expect("unexprected file chunk send error")
+                });
+
+            return Some(response)
+        },
+        R::SendAvatar { friend, file_size, file_hash } => {
+            use rstox::core::FileKind;
+
+            let file_id = file_hash.parse().ok()?;
+            let response =
+                tox.send_file_with_id(
+                    *friend,
+                    FileKind::Avatar,
+                    *file_size,
+                    file_id,
+                    "avatar.png"
+                )
+                .map(|file_number| Response::FileNumber { file_number })
+                .unwrap_or_else(|e| Response::FileSendError {
+                    error: e.try_into().unwrap()
                 });
 
             return Some(response)
